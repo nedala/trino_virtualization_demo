@@ -65,7 +65,7 @@ Run: TrinoFederatedDemo_Streamlined.ipynb
 What it demonstrates:
 
 Example query:
-
+```sql
 SELECT
     c.customer_name,
     l.loyalty_tier,
@@ -81,7 +81,7 @@ LEFT JOIN minio.default.stock_ticks t ON t.symbol = o.symbol
                     AND o.order_ts + INTERVAL '5' MINUTE
 GROUP BY c.customer_name, l.loyalty_tier, p.sector
 ORDER BY order_value_usd DESC;
-
+```
 
 Key Demonstrations:
 - Multi-system federation: Single SQL across 4 systems
@@ -96,15 +96,17 @@ Tool: DBeaver or any SQL client
 Connection: localhost:8080 (user: demo_user)
 
 Example queries:
-
+```sql
 SHOW CATALOGS;
+```
 
+```sql
 SELECT c.customer_name, l.loyalty_tier, COUNT(o.order_id) as orders
 FROM minio.default.customers c
 JOIN minio.default.orders o ON c.customer_id = o.customer_id
 LEFT JOIN sqlserver.master.demo.customerloyalty l ON l.customer_id = c.customer_id
 GROUP BY c.customer_name, l.loyalty_tier;
-
+```
 
 ## Access Points
 
