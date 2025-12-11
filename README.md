@@ -7,14 +7,24 @@ This demo shows how Trino can query multiple data systems at once, with no ETL a
 
 
 ### Quick Setup
-Run:
-  ./setup_demo.sh
-
 docker-compose up -d
 
+Run:
+```bash
+./setup_demo.sh
+```
+
+Or manually start services:
+```bash
+docker-compose up -d
+```
+
 ### Manual Steps
+
 Start services:
-  docker-compose up -d
+```bash
+docker-compose up -d
+```
 
 Open Jupyter in your browser at http://localhost:8888
 
@@ -156,11 +166,29 @@ Network:
 - Ports 8080, 8888, 9000, 9001, 9092, 1433, 5432, 8090 available
 - Internet connection for package installation
 
-docker-compose down && docker-compose up -d
 docker-compose logs trino
 docker-compose logs jupyter
 docker-compose down -v
 docker-compose up -d
+
+## Common Docker Commands
+
+Restart all services:
+```bash
+docker-compose down && docker-compose up -d
+```
+
+Check logs:
+```bash
+docker-compose logs trino
+docker-compose logs jupyter
+```
+
+Reset all data:
+```bash
+docker-compose down -v
+docker-compose up -d
+```
 
 ## Troubleshooting
 
@@ -172,26 +200,22 @@ Common Issues:
 
 Recovery Commands:
 
-Restart services:
-  docker-compose down && docker-compose up -d
 
-Check logs:
-  docker-compose logs trino
-  docker-compose logs jupyter
-
-Reset data:
-  docker-compose down -v
-  docker-compose up -d
-
-Demo Management Scripts:
+## Demo Management Scripts
 
 Complete setup (first time or full reset):
-  ./setup_demo.sh
+```bash
+./setup_demo.sh
+```
 
 Quick restart (services only):
-  ./start_demo.sh
+```bash
+./start_demo.sh
+```
 
 Clean restart (removes Trino data only):
-  ./cleanup_demo.sh
+```bash
+./cleanup_demo.sh
+```
 
 Note: The cleanup_demo.sh script only removes Trino-specific volumes and containers, preserving other Docker data on your system. This makes it safe for development environments.
