@@ -1,0 +1,11 @@
+customer_id,customer_name,country,segment
+1,Acme Corp,USA,Enterprise
+2,Globex,USA,SMB
+3,Initech,Canada,Midmarket
+4,Stark Industries,USA,Enterprise
+5,Wayne Enterprises,UK,Enterprise
+6,Hooli,USA,SMB
+7,Umbrella Corporation,Japan,Enterprise
+8,Cyberdyne Systems,USA,Midmarket
+9,Oscorp,USA,SMB
+10,Veidan Industries,Israel,Enterprise

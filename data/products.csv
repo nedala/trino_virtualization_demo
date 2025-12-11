@@ -1,0 +1,11 @@
+symbol,sector,industry
+MSFT,Technology,Software
+AAPL,Technology,Hardware
+AMZN,Consumer,Internet Retail
+GOOG,Technology,Internet Services
+SNOW,Technology,Data Cloud
+TSLA,Consumer,Electric Vehicles
+META,Technology,Social Media
+NVDA,Technology,Semiconductors
+JPM,Financial,Banking
+JNJ,Healthcare,Pharmaceuticals

@@ -1,0 +1,148 @@
+services:
+  jupyter:
+    build:
+      context: ./jupyter
+      dockerfile: Dockerfile_Jupyter_Streamlined
+    ports:
+      - "8888:8888"
+    volumes:
+      - ./notebooks:/notebooks
+      - ./data:/notebooks/data
+    depends_on:
+      - sqlserver
+      - minio
+      - kafka
+    environment:
+      - JUPYTER_ENABLE_LAB=1
+      - MINIO_HOST=minio:9000
+      - MINIO_ACCESS_KEY=accesskey
+      - MINIO_SECRET_KEY=secretkey
+      - SQL_HOST=sqlserver
+
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-preview-ubuntu-22.04
+    container_name: sqlserver
+    hostname: sqlserver
+    restart: always
+    volumes:
+      - sqlvolume:/var/opt/mssql
+    ports:
+      - "1433:1433"
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=yourStrong(!)Password
+      - MSSQL_PID=Express
+
+  minio:
+    image: minio/minio:latest
+    environment:
+      - MINIO_ACCESS_KEY=accesskey
+      - MINIO_SECRET_KEY=secretkey
+    volumes:
+      - ./minio_data:/data
+    command: server /data --console-address ":9001"
+    ports:
+      - "9001:9001"
+      - "9000:9000"
+
+  postgresdb:
+    image: postgres:latest
+    container_name: postgresdb
+    environment:
+      - POSTGRES_DB=db
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    volumes:
+      - ./postgres_data:/var/lib/postgresql/data
+
+  trino:
+    image: trinodb/trino:420
+    container_name: trino
+    volumes:
+      - ./trino_catalog/minio.properties:/etc/trino/catalog/minio.properties:ro
+      - ./trino_catalog/kafka.properties:/etc/trino/catalog/kafka.properties:ro
+      - ./trino_catalog/sqlserver.properties:/etc/trino/catalog/sqlserver.properties:ro
+      - ./trino_catalog/postgresdb.properties:/etc/trino/catalog/postgresdb.properties:ro
+      - ./trino_catalog/jvm.config:/etc/jvm.config
+      - ./trino_catalog/config.properties:/etc/config.properties
+      - ./trino_catalog/node.properties:/etc/node.properties
+      - ./jupyter/conf/core-site.xml:/etc/core-site.xml:ro
+      - ./trino_data:/var/trino/data
+    ports:
+      - "8080:8080"
+    environment:
+      MINIO_ROOT_USER: accesskey
+      MINIO_ROOT_PASSWORD: secretkey
+      AWS_ACCESS_KEY_ID: accesskey
+      AWS_SECRET_ACCESS_KEY: secretkey
+    depends_on:
+      - sqlserver
+      - jupyter
+      - kafka
+
+  superset_postgres:
+    image: postgres:latest
+    container_name: superset_postgres
+    hostname: superset_postgres
+    restart: always
+    volumes:
+      - superset_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U superset -d superset || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    environment:
+      POSTGRES_USER: superset
+      POSTGRES_PASSWORD: superset
+      POSTGRES_DB: superset
+      PGDATA: /var/lib/postgresql/data/pgdata
+
+  superset:
+    # Visualization server
+    build:
+      context: ./superset
+      dockerfile: ./Dockerfile
+    container_name: superset
+    ports:
+      - 8090:8088
+    depends_on:
+      superset_postgres:
+        condition: service_healthy
+    environment:
+      - SUPERSET_SECRET_KEY=irockwiththebestkeys
+      - SUPERSET_HOME=/app/superset_home
+      - SQLALCHEMY_DATABASE_URI=postgresql+psycopg2://superset:superset@superset_postgres:5432/superset
+      - PYTHONDONTWRITEBYTECODE=1
+    volumes:
+      - ./superset:/app/superset_home
+
+  kafka:
+    image: wurstmeister/kafka:2.12-2.5.0
+    container_name: kafka
+    ports:
+      - "9092:9092"
+      - "9094:9094"
+    environment:
+      KAFKA_ADVERTISED_HOST_NAME: kafka
+      KAFKA_CREATE_TOPICS: "test:1:1"
+      # Listener configuration
+      KAFKA_LISTENERS: INSIDE://:9092,OUTSIDE://:9094
+      KAFKA_ADVERTISED_LISTENERS: INSIDE://kafka:9092,OUTSIDE://kafka:9094
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INSIDE:PLAINTEXT,OUTSIDE:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INSIDE
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - zookeeper
+
+  zookeeper:
+    image: wurstmeister/zookeeper
+    ports:
+      - "2181:2181"
+
+volumes:
+  sqlvolume:
+  superset_postgres_data:

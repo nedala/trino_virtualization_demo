@@ -1,0 +1,127 @@
+FROM ubuntu:22.04
+
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get -qq install wget curl ca-certificates
+
+# Install wget, curl, git, unzip, java, make, automake, gcc, gcc-c++, graphviz, cmake, clang, llvm-dev, gcc, zlib1g-dev, libbz2-dev, libsqlite3-dev, libssl-dev, libffi-dev, ca-certificates, nano, vim, zip, unzip, npm
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get -qq install -y \
+    git \
+    unzip \
+    openjdk-17-jdk-headless \
+    nano vim zip unzip npm && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+WORKDIR /tmp
+RUN wget -q https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh && \
+    /bin/bash miniconda.sh -b -p /opt/conda && \
+    rm -f miniconda.sh
+
+# Add conda to the PATH for subsequent RUN commands
+ENV PATH="/opt/conda/bin:${PATH}"
+
+# Initialize conda and clean up to keep the image size small
+RUN conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main && \
+    conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r && \
+    conda update -y conda && \
+    conda clean --all --yes
+
+# Install ODBC-devel and MSSQL server for Ubuntu
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get -qq install -y \
+    unixodbc-dev && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install Conda
+WORKDIR /opt
+ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+ENV PATH=${PATH}:${JAVA_HOME}/bin
+
+# Install Hadoop
+ENV HADOOP_VERSION=3.2.3
+ENV HADOOP_HOME=/opt/hadoop
+WORKDIR ${HADOOP_HOME}
+RUN curl -sSL https://archive.apache.org/dist/hadoop/common/hadoop-$HADOOP_VERSION/hadoop-$HADOOP_VERSION.tar.gz | \
+    tar -xz -C ${HADOOP_HOME} --strip-components 1
+
+# Install Apache Hive
+ENV HIVE_VERSION=3.1.3
+ENV HIVE_HOME=/opt/hive
+WORKDIR ${HIVE_HOME}
+RUN curl -sSL https://repo1.maven.org/maven2/org/apache/hive/hive-standalone-metastore/${HIVE_VERSION}/hive-standalone-metastore-${HIVE_VERSION}-bin.tar.gz | \
+    tar -xz -C ${HIVE_HOME} --strip-components 1
+
+# Install Spark
+ENV SPARK_HOME=/opt/spark
+ENV SPARK_VERSION=4.0.1
+WORKDIR ${SPARK_HOME}
+RUN curl -sSL https://dlcdn.apache.org/spark/spark-${SPARK_VERSION}/spark-${SPARK_VERSION}-bin-hadoop3.tgz | \
+        tar -xz -C ${SPARK_HOME} --strip-components 1
+
+# Install Minio
+ENV MINIO_HOME=/opt/minio
+WORKDIR ${MINIO_HOME}
+RUN wget https://dl.minio.io/client/mc/release/linux-amd64/mc -O ${MINIO_HOME}/mc && \
+    chmod a+x ${MINIO_HOME}/mc
+
+ENV FLUME_HOME=/opt/flume
+# Install AWS Minio libs
+ENV JAR_HOME=/opt/jars
+WORKDIR ${JAR_HOME}
+COPY jars/*.jar ${JAR_HOME}/
+RUN wget https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-aws/${HADOOP_VERSION}/hadoop-aws-${HADOOP_VERSION}.jar -O ${JAR_HOME}/hadoop-aws-${HADOOP_VERSION}.jar
+ENV AWS_JAR=1.12.71
+RUN wget https://repo1.maven.org/maven2/com/amazonaws/aws-java-sdk-bundle/${AWS_JAR}/aws-java-sdk-bundle-${AWS_JAR}.jar -O ${JAR_HOME}/aws-java-sdk-bundle.jar
+RUN curl -sSL https://dev.mysql.com/get/Downloads/Connector-J/mysql-connector-j-9.5.0.tar.gz | \
+    tar -xz -C ${JAR_HOME} --strip-components 1
+RUN rm -f ${HIVE_HOME}/lib/guava-*.jar ${SPARK_HOME}/jars/guava*.jar ${FLUME_HOME}/lib/guava*.jar ${HIVE_HOME}/lib/guava*.jar && \
+    cp ${JAR_HOME}/*.jar ${HADOOP_HOME}/share/hadoop/common/lib/ && \
+    cp ${JAR_HOME}/*.jar ${SPARK_HOME}/jars/ && \
+    cp ${JAR_HOME}/*.jar ${HIVE_HOME}/lib/
+
+ENV PATH=${PATH}:${SPARK_HOME}/bin:${JAVA_HOME}/bin:${MINIO_HOME}/:${HADOOP_HOME}/bin:${HIVE_HOME}/bin:${FLUME_HOME}/bin
+
+# Install Jupyter Env with CUDA Enabled
+RUN pip install pandas numba openpyxl xlsxwriter requests black isort yapf
+
+# Install Requirements.txt
+ADD requirements.txt .
+RUN pip install --upgrade pip && pip install -r requirements.txt
+
+# Ports Spark + Jupyter
+EXPOSE 4040
+EXPOSE 4041
+EXPOSE 8888
+EXPOSE 9083
+EXPOSE 10000
+
+# Patch pip
+RUN rm -Rf /root/.cache/pip
+
+# Install trino client
+RUN wget https://repo1.maven.org/maven2/io/trino/trino-cli/420/trino-cli-420-executable.jar -O ${JAR_HOME}/trino.jar && \
+    alias trino="java -jar ${JAR_HOME}/trino.jar --server http://trino:8080 --catalog minio --schema default" 
+
+# Expose ports
+EXPOSE 8888
+
+# Add core-site.xml to a shared conf dir and make it available to Spark, Hadoop and Hive
+COPY conf/core-site.xml /conf/core-site.xml
+RUN mkdir -p ${HADOOP_HOME}/etc/hadoop ${SPARK_HOME}/conf ${HIVE_HOME}/conf && \
+    ln -sf /conf/core-site.xml ${HADOOP_HOME}/etc/hadoop/core-site.xml && \
+    ln -sf /conf/core-site.xml ${SPARK_HOME}/conf/core-site.xml && \
+    ln -sf /conf/core-site.xml ${HIVE_HOME}/conf/core-site.xml
+
+ENV HADOOP_CONF_DIR=/conf \
+    HIVE_CONF_DIR=/conf \
+    SPARK_CONF_DIR=/conf \
+    HADOOP_CLASSPATH=/conf:${HADOOP_CLASSPATH} \
+    SPARK_CLASSPATH=/conf:${SPARK_CLASSPATH}
+
+VOLUME /notebooks
+WORKDIR /notebooks
+# Add CMD to auto start jupyter lab
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod a+x /entrypoint.sh
+CMD ["/entrypoint.sh"]

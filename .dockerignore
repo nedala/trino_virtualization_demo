@@ -1,0 +1,40 @@
+# Ignore secrets
+*.env
+secrets*
+*.key
+*.pem
+*.crt
+*.p12
+*.jks
+*.json
+
+# Ignore intermediate and large files
+*.log
+*.tmp
+*.bak
+*.sqlite
+*.db
+*.parquet
+*.orc
+*.gz
+*.zip
+*.tar
+*.tar.gz
+*.hdf5
+*.ipynb_checkpoints/
+
+# Ignore Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Ignore Jupyter runtime
+.jupyter/
+
+# Ignore Docker build artifacts
+build/
+dist/
+
+# Ignore system files
+.DS_Store
+Thumbs.db
