@@ -1,13 +1,26 @@
 # Trino Demo: Federated Analytics
 
-## Quick Start
 
+## Why This Demo?
+
+Many organizations struggle with data spread across silos—different databases, file systems, cloud storage, and real-time streams. Traditional approaches require complex ETL pipelines, data duplication, and slow batch jobs just to get a unified view.
+
+This demo is warranted because it:
+- Shows how you can run powerful analytics across multiple systems instantly, without moving or copying data.
+- Demonstrates true data federation: join, aggregate, and analyze data from SQL, NoSQL, files, and streams in a single query.
+- Highlights how Trino eliminates the need for custom connectors, brittle ETL, and expensive data warehouses for many use cases.
+- Proves that you can get sub-second performance and real-time insights even with diverse, distributed data sources.
+- Provides a hands-on, reproducible example for teams evaluating modern data architectures or looking to modernize legacy analytics.
+
+---
+
+## Quick Start
 
 This demo shows how Trino can query multiple data systems at once, with no ETL and fast performance.
 
 
 ### Quick Setup
-docker-compose up -d
+`docker-compose up -d`
 
 Run:
 ```bash
@@ -28,10 +41,18 @@ docker-compose up -d
 
 Open Jupyter in your browser at http://localhost:8888
 
+
 ## Demo Architecture
 
-
 Trino connects to MinIO (Hive), SQL Server, and Kafka, allowing you to run queries across all of them at once.
+
+---
+
+**Note:** Trino already comes with an EXTENSIVE (truly extensive) set of connectors out of the box. These connectors let you query popular structured databases (like MySQL, PostgreSQL, SQL Server, Oracle), NoSQL stores (Cassandra, MongoDB, etc.), unstructured and file-based sources (S3, HDFS, Google Cloud Storage), real-time streaming systems (Kafka, Kinesis, Pulsar), and both analytical and transactional cloud/on-prem sources. This includes the latest support for modern table formats like Iceberg, Delta Lake, and Hudi.
+
+For the full, always up-to-date list, see the official documentation: https://trino.io/docs/current/connector.html
+
+---
 
 ## Demo Flow
 
